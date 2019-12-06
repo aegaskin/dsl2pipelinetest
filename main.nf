@@ -9,6 +9,7 @@
 ----------------------------------------------------------------------------------------
 */
 
+nextflow.preview.dsl = 2
 
 
 /*
@@ -23,42 +24,17 @@ ch_output_docs = file("$baseDir/docs/output.md", checkIfExists: true)
 /*
  * Create a channel for input read files
  */
-if (params.readPaths) {
-    if (params.single_end) {
-        Channel
-            .from(params.readPaths)
-            .map { row -> [ row[0], [ file(row[1][0], checkIfExists: true) ] ] }
-            .ifEmpty { exit 1, "params.readPaths was empty - no input files supplied" }
-            .into { ch_read_files_fastqc; ch_read_files_trimming }
-    } else {
-        Channel
-            .from(params.readPaths)
-            .map { row -> [ row[0], [ file(row[1][0], checkIfExists: true), file(row[1][1], checkIfExists: true) ] ] }
-            .ifEmpty { exit 1, "params.readPaths was empty - no input files supplied" }
-            .into { ch_read_files_fastqc; ch_read_files_trimming }
-    }
-} else {
-    Channel
-        .fromFilePairs(params.reads, size: params.single_end ? 1 : 2)
-        .ifEmpty { exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --single_end on the command line." }
-        .into { ch_read_files_fastqc; ch_read_files_trimming }
-}
+Channel
+    .fromFilePairs(params.reads, size: params.single_end ? 1 : 2)
+    .ifEmpty { exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --single_end on the command line." }
+    .into { ch_read_files_fastqc; ch_read_files_trimming }
 
 // Check the hostnames against configured profiles
-checkHostname()
+// checkHostname()
 
 // Import processes from nf-core/modules
-params.module_version = '9fd356468d61ef384a02acebc4200d0ce1a08c0a'
-local_modules_base = "./modules/"
-web_modules_base = "https://raw.githubusercontent.com/nf-core/modules/${params.module_version}/"
-
-try {
-    include "${local_modules_base}/tools/fastqc/main.nf" params(params)
-    include "${local_modules_base}/tools/trim_galore/main.nf" params(params)
-} catch (Exception e) {
-    include "${web_modules_base}/tools/fastqc/main.nf" params(params)
-    include "${web_modules_base}/tools/trim_galore/main.nf" params(params)
-}
+include "./modules/tools/fastqc/main.nf" params(params)
+include "./modules/tools/trim_galore/main.nf" params(params)
 
 /*
  * STEP 2 - MultiQC
